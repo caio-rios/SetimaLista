@@ -8,6 +8,8 @@ library(foreign)
 
 ecovote <- read.dta("fair.dta")
 
+# GitHub - https://github.com/caio-rios/SetimaLista
+
 #Questão 1-------------------------------------------------------------
 
 # A)
