@@ -18,6 +18,9 @@ library(knitr)
 ecovote <- read.dta("fair.dta")
 ```
 
+[GitHub](https://github.com/caio-rios/SetimaLista)
+
+
 ## 1. A base de dados fair.dta (disponível na pasta do OSF) possui variáveis adicionais ao banco de dados sobre voto econômico nos EUA. Com ela desenvolva as atividades abaixo e comente seu código:
 
 ### a) Apresente uma análise descritiva de todas as variáveis da base de dados.
