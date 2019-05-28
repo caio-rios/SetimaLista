@@ -1,0 +1,172 @@
+---
+title: "Lista_7_Caio_Rios"
+author: "Caio Rios"
+date: "27 de maio de 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+library(tidyverse)
+library(dotwhisker)
+library(broom)
+library(foreign)
+library(knitr)
+ecovote <- read.dta("fair.dta")
+```
+
+## 1. A base de dados fair.dta (disponível na pasta do OSF) possui variáveis adicionais ao banco de dados sobre voto econômico nos EUA. Com ela desenvolva as atividades abaixo e comente seu código:
+
+### a) Apresente uma análise descritiva de todas as variáveis da base de dados.
+
+```{r}
+Variaveis <- c("Year", "Vote", "Party", "Person", "Duration", "War", "Growth",
+               "Inflation", "Good News")
+Minimo <- c(1880, 36.12, -1, 0, 0, 0, -14.56, 0, 0)
+PQ <- c(1911, 49.43, -1, 0, 0, 0, -1.67, 1.40, 3.75)
+Mediana <- c(1942, 52.03, -1, 1, 1, 0, 2.24, 2.16, 5)
+Media <- c(1942, 52.27, -0.12, 0.59, 0.70, 0.09, 0.63, 2.66, 5.29)
+TQ <- c(1973, 55.69, 1, 1, 1.25, 0, 4.06, 3.35, 7.25)
+Maximo <- c(2004, 62.46, 1, 1, 2, 1, 11.68, 7.93, 10)
+
+desc <- data.frame(Variaveis, Minimo, PQ, Mediana, Media, 
+                   TQ, Maximo)
+kable(desc)
+```
+
+
+### b) Apresente um modelo de regressão linear bivariado no qual VOTE seja variável dependente e GROWTH variável independente. 
+
+```{r}
+regbi <- lm(VOTE ~ GROWTH, data = ecovote)
+```
+
+#### I) Descreva as variáveis utilizadas no modelo e sua relação; 
+
+A variável dependente mede a porcentagem do voto do incumbente e a variável independente mede o crescimento econômico. Logo, a relação esperada, de acordo com a teoria do voto econômico, é que o crescimento econômico tenha um impacto positivo nos votos do incumbente. Isto é, eleitores tendem a recompensar o incumbente quando a economia vai bem.
+  
+#### II) Apresente os resultados do modelo;
+
+```{r}
+summary(regbi)
+```
+
+A relação encontrada corrobora a hipótese do voto econômico. Quando há crescimento econômico, os eleitores tendem a votar no candidato incumbente. A relação foi estatisticamente significante a um p-valor menor que 0,000 e quanto a magnitude do efeito, ao aumentar uma unidade da variável crescimento, o incumbente receberia 0,65% a mais dos votos.
+
+#### III) Avalie o modelo quanto a seu ajuste e sua capacidade explicativa;
+
+O R² ajustado do modelo foi de 0,3341. Isto quer dizer que o modelo explica serca de 33,5% dos casos. Por ser um modelo bivariado, sua capacidade explicativa é limitada.
+
+
+### c) Apresente um modelo de regressão multivariada adicionando ao modelo do item a) a variável GOODNEWS como variável independente. 
+
+```{r}
+regmu <- lm(VOTE ~ GROWTH + GOODNEWS, data = ecovote)
+```
+
+#### I) Descreva a variável adicionada ao modelo e sua relação com as demais;
+
+A nova variável acrescentada no modelo de regressão foi GOODNEWS. Esta mede a quantidade de notícias positivas em relação ao governo vigente. Ela deve interagir positivamente com a variável dependente (% de votos do incumbente) pois boas notícias refletem um bom governo e o eleitor tende a recompensar  bons governos.
+
+#### II) Apresente os resultados do modelo;
+
+```{r}
+summary(regmu)
+```
+
+A relação entre crescimento econômico e votos do incumbente permaneceu positiva e estatisticamente significante. A variável GOODNEWS também tem uma relação positiva com voto, contudo com um p-valor mais modesto de 0,022. Ainda sim, podemos dizer que existe significância estatística se considerarmos, como ponto de corte, o p-valor de 0,05. A cada boa notícia a mais, o voto do incumbente cresce em 0,71%.
+
+#### III) Avalie o modelo quanto a seu ajuste e sua capacidade explicativa.  Comente e interprete os coeficientes estimados, os intervalos de confiança do modelo e o RMSE e o R2.
+
+Ao acrescentarmos mais uma variável ao modelo, ele ficou mais ajustado do que o primeiro. O R² ajustado foi de 0,4269, isto é, o modelo explica, aproximadamente, 42,7% dos casos. Em consonância com o R², o erro padrão dos resíduos foi de 4,596. Este valor também nos informa o quão ajustado é o nosso modelo com os dados reais. Ele calcula a raiz quadrada da média dos resíduos  ao quadrado divido pelo grau de liberdade, sendo seu valor "perfeito" igual a 0.
+
+#### IV) Compare os resultados do item anterior com os adquiridos com o modelo do item b). 
+
+No modelo 1, o efeito de crescimento econômico sobre o voto do incumbente foi de 0,65 enquanto no modelo 2, ao adicionarmos a variável GOODNEWS, o efeito caiu para 0,57. O p-valor em ambos os modelos foram estatisticamente significantes, mas o modelo 2 apresentou um ajuste melhor aos dados. 
+
+#### V) Faça uma análise dos resíduos (ui), apresente sua média e indícios para concluir se há ou não há homocedasticidade no modelo.
+
+```{r}
+options(scipen=999)
+ecovote$residuos <- residuals.lm(regmu)
+ecovote$predict <- predict(regmu)
+print(mean(ecovote$residuos))
+```
+
+A média dos resíduos foi aproximadamente 0. Para observar se existe heterocedasticidade no modelo, podemos ver se existe alguma relação entre os resíduos e os valores preditos pelo modelo. Caso os dados estejam aleatoriamente distribuidos ao redor do 0, podemos dizer que o modelo não tem heterocedasticidade. De fato, como mostra o gráfico abaixo, não há relação entre essas variáveis.
+
+```{r}
+theme_set(theme_classic())
+ggplot(ecovote, aes(x = predict, y = residuos)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F)
+```
+
+
+### d) Apresente um modelo de regressão multivariada adicionando ao modelo do item b) a variável WAR como variável independente. 
+
+```{r}
+regmu2 <- lm(VOTE ~ GROWTH + GOODNEWS + WAR, data = ecovote)
+```
+
+#### I) Descreva a variável adicionada ao modelo e sua relação com as demais;
+
+A variável WAR é uma variável binária que representa a presença (ou não) de guerras por ano. É provável que em tempos de guerra, o crescimento econômico seja afetado negativamente. Porém, a relação com votos no incumbentE é incerta, pois os eleitores podem apoiar o incumbente almejando estabilidade que ajudaria na resulação da guerra, ou, punir o candidato mandatário por causa da insatisfação de ter o país em guerra. Essa variável pode estar relacionada a boas notícias, pois em tempos de guerra, é provável que a quantidade de boas notícias sejam bem menores.
+
+#### II) Apresente os resultados do modelo; 
+
+```{r}
+summary(regmu2)
+```
+
+A relação de crescimento econômico e votos do incumbente continua positiva (0,57) e estatisticamente significante a um p-valor menor que 0,000. As demais variáveis (GOODNEWS e WAR) estão positivamente correlacionadas a variável dependente contudo o nível de significância foram, de ambas, menor que 0,05. 
+
+#### III) Avalie o modelo quanto a seu ajuste e sua capacidade explicativa.  Comente e interprete os coeficientes estimados, os intervalos de confiança do modelo e o RMSE e o R2. 
+
+O modelo apresenta um R² ajustado de 0,4065. Isto quer dizer que o modelo explica aproxidamente 40,5% dos casos. O erro padrão dos resíduos foi de 4,677 que representa o quão próximo os dados reais estão do modelo. Quanto menor o seu valor, melhor.
+
+#### IV) Compare os resultados do item anterior com os adquiridos com o modelo do item c).
+
+Ambos os modelos mostram que o crescimento econômico e a quantidade de votos obtidos pelo incumbente são positivos e estatisticamente significantes. Ao acrescentarmo uma variável ao modelo (GOODNEWS), o R² ajustado foi de aproximadamente 0,43, contudo, esse valor cai para 0,41 ao adicionarmos a variável WAR. Isto é, o modelo ficou levemente menos ajustado. Outro ponto interessante é que a variável GOODNEWS foi estatísticamente significante a um p-valor menor que 0,05, mas ao adicionarmos WAR no modelo, seu nível de significância caiu para 0,06, tornando-se não significante a um ponte de  corte de 0,05.
+
+#### V) Faça uma análise dos resíduos (ui), apresente sua média e indícios para concluir se há ou não há homocedasticidade no modelo.
+
+```{r}
+ecovote$residuos2 <- residuals.lm(regmu2)
+ecovote$predict2 <- predict(regmu2)
+print(mean(ecovote$residuos2))
+```
+
+A média do resíduo foi aproximadamente 0. Para observar a presença de heterocedasticidade vamos observar a relação entre resíduos e valores preditos. Como o gráfico abaixo mostra, os resíduos se dispõem de forma aleatória ao redor do 0. Isso indica presença de homocedasticidade no modelo.
+
+```{r}
+ggplot(ecovote, aes(x = predict2, y = residuos2)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F)
+```
+
+#### VI) Qual variável tem maior efeito descritivo sobre a variável dependente? Apresente sua análise. 
+
+A variável que apresenta maior efeito sobre os votos no incumbente foi GOODNEWS. Esta apresentou um efeito de 0,72% para cada boa notícia que a mídia apresenta. Porém essa relação obteve um p-valor maior que 0,05. A variável crescimento econômico é mais robusta vista que o p-valor foi menor que 0,000 ainda que a magnitude do seu efeito (0,5729) seja menor do que a de GOODNEWS.
+
+
+## 2. Numa das revistas listadas abaixo, identifique um artigo que apresente resultados de um modelo de regressão multivariada e realize as seguintes tarefas: 
+
+### a) Faça a citação do artigo. 
+
+KOOS, Carlos. 2018. "Decay or Resilience? The long-Term social consequences  of conflict-related sexual Violence in  sierra leone".World Politics. v. 70. Issue 2.
+
+### b) Qual a variável dependente do modelo? Apresente o modelo utilizado no artigo e a justificativa para tal verificando qual a relevância do uso do modelo para a pergunta de pesquisa do artigo.
+
+![Tabela de Regressão](C:/Users/kibca/Desktop/dados_encontro_2_ufpe/SetimaLista/tabela.png)
+
+A variável dependente do modelo é "association" que mede se algum membro da família pertence a associações comunitárias. Por ser uma variável binária, o autor apresentou uma regressão logística. 
+
+A pergunta de pesquisa do artigo é: Os conflitos de violência sexual destrói o comportamento social das comunidades, ou, as vítimas e famílias conseguem superar esses eventos traumáticos e demonstrar resiliência? A tabela acima mostra os principais resultados do artigo. Ele mostra, exatamente, o efeito de conflitos relativos à violência sexual no engajamento da família em associações comunitárias. O autor ainda verifica a relação entre os conflitos e ajudas humanitárias através do termo interativo entre essas variáveis.
+
+### c) Interprete os resultados do modelo.
+
+O autor mostra que conflitos relativos a violência sexual não inibe a família de participar ativamente da comunidade. Ele mostra que existe um efeito de resiliência por parte dos violentados. Isso é comprovado, no modelo, pois o efeito desses conflitos (CRSV in HH) na participação em associações comunitárias é positivo e estatísticamente significante em todos os modelos da tabela. O autor testa também se esse efeito só ocorre caso haja ajudas humanitárias na comunidade. De fato, quando existem esses tipos de ajuda, há mais membros nas associações comunitárias, porém o seu efeito interativo com os conflitos não foi significante, mostrando, assim, uma independência nessa relação. Ou seja, o efeito de resiliência não depende das ajudas humanitárias.
